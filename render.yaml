@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: tryinleap-dialer
+    runtime: docker
+    plan: free
+    envVars:
+      - key: TELNYX_API_KEY
+        sync: false
+      - key: TELNYX_CONNECTION_ID
+        sync: false
+      - key: TELNYX_PHONE_NUMBER
+        sync: false
+      - key: TELNYX_MESSAGING_PROFILE_ID
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: WEBHOOK_URL
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
