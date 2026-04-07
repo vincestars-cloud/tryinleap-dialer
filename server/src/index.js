@@ -15,6 +15,11 @@ import { campaignRouter } from './routes/campaigns.js';
 import { smsRouter } from './routes/sms.js';
 import { recordingRouter } from './routes/recordings.js';
 import { webrtcRouter } from './routes/webrtc.js';
+import { callbackRouter } from './routes/callbacks.js';
+import { scriptRouter } from './routes/scripts.js';
+import { transferRouter } from './routes/transfers.js';
+import { monitorRouter } from './routes/monitor.js';
+import { reportingRouter } from './routes/reporting.js';
 import { authRouter } from './routes/auth.js';
 import { authMiddleware } from './middleware/auth.js';
 import { DialerEngine } from './services/dialerEngine.js';
@@ -51,6 +56,11 @@ app.use('/api/campaigns', authMiddleware, campaignRouter);
 app.use('/api/sms', authMiddleware, smsRouter);
 app.use('/api/recordings', authMiddleware, recordingRouter);
 app.use('/api/webrtc', authMiddleware, webrtcRouter);
+app.use('/api/callbacks', authMiddleware, callbackRouter);
+app.use('/api/scripts', authMiddleware, scriptRouter);
+app.use('/api/transfers', authMiddleware, transferRouter);
+app.use('/api/monitor', authMiddleware, monitorRouter);
+app.use('/api/reporting', authMiddleware, reportingRouter);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));

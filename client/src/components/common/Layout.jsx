@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
-import { Phone, Users, BarChart3, MessageSquare, Mic, Shield, LogOut, Zap } from 'lucide-react';
+import { Phone, Users, BarChart3, MessageSquare, Mic, Shield, LogOut, Zap, Calendar, TrendingUp } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { wsService } from '../../services/websocket';
 import { webrtc as webrtcApi } from '../../services/api';
@@ -14,6 +14,8 @@ const navItems = [
   { to: '/campaigns', icon: Zap, label: 'Campaigns' },
   { to: '/sms', icon: MessageSquare, label: 'SMS' },
   { to: '/recordings', icon: Mic, label: 'Recordings' },
+  { to: '/callbacks', icon: Calendar, label: 'Callbacks' },
+  { to: '/reporting', icon: TrendingUp, label: 'Reporting' },
   { to: '/admin', icon: Shield, label: 'Admin' }
 ];
 

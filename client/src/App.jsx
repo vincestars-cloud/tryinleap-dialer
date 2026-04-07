@@ -8,6 +8,8 @@ import LeadDetailPage from './pages/LeadDetailPage';
 import CampaignsPage from './pages/CampaignsPage';
 import SMSPage from './pages/SMSPage';
 import RecordingsPage from './pages/RecordingsPage';
+import CallbacksPage from './pages/CallbacksPage';
+import ReportingPage from './pages/ReportingPage';
 import AdminPage from './pages/AdminPage';
 
 function PrivateRoute({ children }) {
@@ -26,6 +28,8 @@ export default function App() {
         <Route path="campaigns" element={<CampaignsPage />} />
         <Route path="sms" element={<SMSPage />} />
         <Route path="recordings" element={<RecordingsPage />} />
+        <Route path="callbacks" element={<CallbacksPage />} />
+        <Route path="reporting" element={<ReportingPage />} />
         <Route path="admin" element={<AdminPage />} />
       </Route>
     </Routes>

@@ -104,3 +104,43 @@ export const webrtc = {
   credentials: () => request('/webrtc/credentials'),
   token: () => request('/webrtc/token')
 };
+
+// Callbacks
+export const callbacks = {
+  list: (params) => request(`/callbacks?${new URLSearchParams(params || {})}`),
+  create: (data) => request('/callbacks', { method: 'POST', body: JSON.stringify(data) }),
+  complete: (id) => request(`/callbacks/${id}/complete`, { method: 'PUT' }),
+  delete: (id) => request(`/callbacks/${id}`, { method: 'DELETE' })
+};
+
+// Scripts
+export const scripts = {
+  list: (campaignId) => request(`/scripts?campaign_id=${campaignId}`),
+  create: (data) => request('/scripts', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => request(`/scripts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id) => request(`/scripts/${id}`, { method: 'DELETE' })
+};
+
+// Transfers
+export const transfers = {
+  cold: (data) => request('/transfers/cold', { method: 'POST', body: JSON.stringify(data) }),
+  warm: (data) => request('/transfers/warm', { method: 'POST', body: JSON.stringify(data) }),
+  completeWarm: (data) => request('/transfers/complete-warm', { method: 'POST', body: JSON.stringify(data) })
+};
+
+// Monitor (supervisor)
+export const monitor = {
+  listen: (data) => request('/monitor/listen', { method: 'POST', body: JSON.stringify(data) }),
+  whisper: (data) => request('/monitor/whisper', { method: 'POST', body: JSON.stringify(data) }),
+  barge: (data) => request('/monitor/barge', { method: 'POST', body: JSON.stringify(data) }),
+  stop: (sessionId) => request('/monitor/stop', { method: 'POST', body: JSON.stringify({ sessionId }) }),
+  active: () => request('/monitor/active')
+};
+
+// Reporting
+export const reporting = {
+  overview: (params) => request(`/reporting/overview?${new URLSearchParams(params || {})}`),
+  agentPerformance: (params) => request(`/reporting/agent-performance?${new URLSearchParams(params || {})}`),
+  hourly: (params) => request(`/reporting/hourly?${new URLSearchParams(params || {})}`),
+  campaignSummary: () => request('/reporting/campaign-summary')
+};
