@@ -80,58 +80,11 @@ router.post('/manual-call', async (req, res) => {
       }).eq('id', leadId);
     }
 
-    // Place the PSTN call directly from the server
-    // The browser WebRTC handles audio, the server handles the PSTN dial
-    const { makeOutboundCall } = await import('../services/telnyx.js');
-    const telnyxCall = await makeOutboundCall({
-      to: toNumber,
-      from: callerId,
-      skipAMD: true,  // Manual calls skip AMD — agent is already on the line
-      clientState: {
-        callId: callRecord.id,
-        leadId: leadId || null,
-        campaignId: lead?.campaign_id || null,
-        manual: true,
-        agentId: req.agent.id
-      }
-    });
-
-    // Update call with Telnyx IDs
-    await supabase.from('calls').update({
-      telnyx_call_control_id: telnyxCall.call_control_id,
-      telnyx_call_leg_id: telnyxCall.call_leg_id
-    }).eq('id', callRecord.id);
-
-    // Track in dialer engine
-    const dialerEngine = req.app.get('dialerEngine');
-    dialerEngine.pendingCalls.set(telnyxCall.call_control_id, {
-      callId: callRecord.id,
-      leadId: leadId || null,
-      campaignId: lead?.campaign_id || null,
-      telnyxCallControlId: telnyxCall.call_control_id,
-      agentId: req.agent.id,
-      status: 'initiated'
-    });
-
-    // Mark agent as on_call
-    const agentManager = req.app.get('agentManager');
-    await agentManager.assignCallToAgent(req.agent.id, callRecord.id);
-
-    // Notify agent via WebSocket
-    const wsManager = req.app.get('wsManager');
-    wsManager.sendToAgent(req.agent.id, {
-      type: 'incoming_call',
-      callId: callRecord.id,
-      callControlId: telnyxCall.call_control_id,
-      lead: lead || { phone: toNumber },
-      campaignId: lead?.campaign_id || null,
-      manual: true
-    });
-
+    // DON'T dial PSTN from server — the browser WebRTC client will do it
+    // This gives us two-way audio through the browser
     res.json({
       success: true,
       callId: callRecord.id,
-      callControlId: telnyxCall.call_control_id,
       leadPhone: toNumber,
       callerId,
       lead: lead || { phone: toNumber }

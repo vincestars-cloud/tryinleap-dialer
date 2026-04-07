@@ -57,25 +57,37 @@ export default function LeadDetailPage() {
     if (calling) return;
     setCalling(true);
     try {
-      // Server dials the PSTN lead number
+      // Step 1: Create DB record on server (no PSTN dial)
       const result = await dialerApi.manualCall({ leadId: id });
 
-      setActiveCall({
-        callId: result.callId,
-        callControlId: result.callControlId,
-        lead: result.lead || data.lead,
-        campaignId: data.lead.campaign_id
-      });
-      setAgentStatus('on_call');
-
-      // Also initiate WebRTC call for browser audio
+      // Step 2: Dial via WebRTC from browser — this creates BOTH legs
+      // (WebRTC for PC audio + PSTN to lead's phone, bridged automatically)
       if (webrtcMakeCall && webrtcStatus === 'ready') {
         const call = webrtcMakeCall(
-          data.lead.phone,    // destination
-          result.callerId,    // from
+          data.lead.phone,       // destination number (PSTN)
+          '+14048500482',        // caller ID
           'TryInLeap'
         );
-        console.log('WebRTC audio leg initiated');
+        console.log('WebRTC call placed to', data.lead.phone);
+
+        setActiveCall({
+          callId: result.callId,
+          callControlId: result.callControlId,
+          lead: data.lead,
+          campaignId: data.lead.campaign_id,
+          webrtcCall: call
+        });
+        setAgentStatus('on_call');
+      } else {
+        // Fallback: server-only dial (no browser audio)
+        console.warn('WebRTC not ready (status:', webrtcStatus, '). Call will have no browser audio.');
+        setActiveCall({
+          callId: result.callId,
+          callControlId: result.callControlId,
+          lead: data.lead,
+          campaignId: data.lead.campaign_id
+        });
+        setAgentStatus('on_call');
       }
     } catch (err) {
       alert('Call failed: ' + err.message);

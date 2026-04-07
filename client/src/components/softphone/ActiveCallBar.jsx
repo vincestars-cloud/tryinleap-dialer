@@ -72,17 +72,42 @@ export default function ActiveCallBar() {
   }
 
   const handleHangup = async () => {
+    // Hang up WebRTC call (browser-side) — this ends both legs
+    if (activeCall?.webrtcCall) {
+      try { activeCall.webrtcCall.hangup(); } catch {}
+    }
+    // Also try server-side hangup as fallback
     if (activeCall?.callControlId) {
-      await dialer.hangup(activeCall.callControlId);
+      try { await dialer.hangup(activeCall.callControlId); } catch {}
     }
     if (timerRef.current) clearInterval(timerRef.current);
+    setAgentStatus('wrap_up');
+  };
+
+  const handleMute = () => {
+    if (activeCall?.webrtcCall) {
+      if (muted) activeCall.webrtcCall.unmuteAudio();
+      else activeCall.webrtcCall.muteAudio();
+    }
+    setMuted(!muted);
+  };
+
+  const handleHold = () => {
+    if (activeCall?.webrtcCall) {
+      if (held) activeCall.webrtcCall.unhold();
+      else activeCall.webrtcCall.hold();
+    }
+    setHeld(!held);
   };
 
   const toggleRecording = async () => {
-    if (recording) {
-      await dialer.stopRecording(activeCall.callControlId);
-    } else {
-      await dialer.startRecording(activeCall.callControlId);
+    // Recording requires server-side call control ID
+    if (activeCall?.callControlId) {
+      if (recording) {
+        await dialer.stopRecording(activeCall.callControlId);
+      } else {
+        await dialer.startRecording(activeCall.callControlId);
+      }
     }
     setRecording(!recording);
   };
@@ -104,12 +129,12 @@ export default function ActiveCallBar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={() => setMuted(!muted)}
+          <button onClick={handleMute}
             className={`p-2 rounded-lg transition-colors ${muted ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
             {muted ? <MicOff size={16} /> : <Mic size={16} />}
           </button>
 
-          <button onClick={() => setHeld(!held)}
+          <button onClick={handleHold}
             className={`p-2 rounded-lg transition-colors ${held ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
             {held ? <Play size={16} /> : <Pause size={16} />}
           </button>
