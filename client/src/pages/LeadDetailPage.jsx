@@ -57,30 +57,26 @@ export default function LeadDetailPage() {
     if (calling) return;
     setCalling(true);
     try {
-      // Step 1: Get call info from server (creates call record, returns client state)
+      // Server dials the PSTN lead number
       const result = await dialerApi.manualCall({ leadId: id });
-
-      // Step 2: If WebRTC is ready, initiate browser call (with audio)
-      if (webrtcMakeCall && webrtcStatus === 'ready') {
-        // The destination number goes through our Telnyx connection
-        // The client_state tells our webhook to dial the PSTN leg
-        const call = webrtcMakeCall(
-          result.leadPhone,           // destination (triggers webhook)
-          result.callerId,            // caller ID
-          `${data.lead.first_name} ${data.lead.last_name}`,
-          result.clientState          // passed in SIP headers → webhook
-        );
-        console.log('WebRTC call initiated:', call);
-      } else {
-        console.log('WebRTC not ready (status:', webrtcStatus, '), call placed server-side only');
-      }
 
       setActiveCall({
         callId: result.callId,
+        callControlId: result.callControlId,
         lead: result.lead || data.lead,
         campaignId: data.lead.campaign_id
       });
       setAgentStatus('on_call');
+
+      // Also initiate WebRTC call for browser audio
+      if (webrtcMakeCall && webrtcStatus === 'ready') {
+        const call = webrtcMakeCall(
+          data.lead.phone,    // destination
+          result.callerId,    // from
+          'TryInLeap'
+        );
+        console.log('WebRTC audio leg initiated');
+      }
     } catch (err) {
       alert('Call failed: ' + err.message);
     }
