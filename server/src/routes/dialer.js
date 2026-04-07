@@ -86,6 +86,7 @@ router.post('/manual-call', async (req, res) => {
     const telnyxCall = await makeOutboundCall({
       to: toNumber,
       from: callerId,
+      skipAMD: true,  // Manual calls skip AMD — agent is already on the line
       clientState: {
         callId: callRecord.id,
         leadId: leadId || null,

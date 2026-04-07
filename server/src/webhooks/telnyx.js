@@ -90,8 +90,27 @@ router.post('/', async (req, res) => {
           } catch (bridgeErr) {
             console.error('Bridge failed:', bridgeErr.message);
           }
+        } else if (clientState?.manual) {
+          // Manual call answered — just update status, keep the call alive
+          console.log(`Manual call answered: ${callControlId}`);
+          if (clientState.callId) {
+            await supabase.from('calls').update({
+              status: 'bridged',
+              answered_at: new Date().toISOString()
+            }).eq('id', clientState.callId);
+          }
+
+          // Notify agent
+          if (clientState.agentId) {
+            const wsManager = req.app.get('wsManager');
+            wsManager.sendToAgent(clientState.agentId, {
+              type: 'call_connected',
+              callId: clientState.callId,
+              callControlId
+            });
+          }
         } else {
-          // Predictive dialer flow (non-WebRTC)
+          // Predictive dialer flow (non-WebRTC) — goes through AMD
           await dialerEngine.handleCallAnswered(callControlId, event);
         }
         break;
@@ -158,6 +177,26 @@ router.post('/', async (req, res) => {
 
           webrtcToPstn.delete(callControlId);
           pstnToWebrtc.delete(pstnInfo.pstnCallControlId);
+        }
+
+        // Handle manual call hangup
+        if (clientState?.manual && clientState?.callId) {
+          console.log(`Manual call ended: ${callControlId}`);
+          await supabase.from('calls').update({
+            status: 'completed',
+            ended_at: new Date().toISOString(),
+            duration_seconds: event.payload?.duration_secs || 0
+          }).eq('id', clientState.callId);
+
+          if (clientState.agentId) {
+            const agentManager = req.app.get('agentManager');
+            await agentManager.setAgentStatus(clientState.agentId, 'wrap_up');
+            const wsManager = req.app.get('wsManager');
+            wsManager.sendToAgent(clientState.agentId, {
+              type: 'call_ended',
+              callId: clientState.callId
+            });
+          }
         }
 
         // Also handle predictive dialer calls

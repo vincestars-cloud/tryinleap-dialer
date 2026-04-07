@@ -11,13 +11,19 @@ const apiHeaders = () => ({
 
 // ─── Call Control ─────────────────────────────────
 
-export async function makeOutboundCall({ to, from, connectionId, clientState, webhookUrl }) {
-  const response = await telnyx.calls.dial({
+export async function makeOutboundCall({ to, from, connectionId, clientState, webhookUrl, skipAMD = false }) {
+  const callParams = {
     connection_id: connectionId || process.env.TELNYX_CONNECTION_ID,
     to,
     from: from || process.env.TELNYX_PHONE_NUMBER,
-    answering_machine_detection: 'premium',
-    answering_machine_detection_config: {
+    webhook_url: webhookUrl || process.env.WEBHOOK_URL,
+    client_state: clientState ? Buffer.from(JSON.stringify(clientState)).toString('base64') : undefined
+  };
+
+  // Only enable AMD for predictive/progressive dialing, not manual calls
+  if (!skipAMD) {
+    callParams.answering_machine_detection = 'premium';
+    callParams.answering_machine_detection_config = {
       after_greeting_silence_millis: 800,
       between_words_silence_millis: 50,
       greeting_duration_millis: 3500,
@@ -25,10 +31,10 @@ export async function makeOutboundCall({ to, from, connectionId, clientState, we
       maximum_number_of_words: 5,
       silence_threshold: 256,
       total_analysis_time_millis: 5000
-    },
-    webhook_url: webhookUrl || process.env.WEBHOOK_URL,
-    client_state: clientState ? Buffer.from(JSON.stringify(clientState)).toString('base64') : undefined
-  });
+    };
+  }
+
+  const response = await telnyx.calls.dial(callParams);
   return response.data;
 }
 
