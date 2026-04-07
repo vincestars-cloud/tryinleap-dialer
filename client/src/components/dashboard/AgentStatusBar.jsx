@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
-import { agents as agentsApi } from '../../services/api';
+import { agents as agentsApi, campaigns as campaignsApi } from '../../services/api';
 import { Wifi, WifiOff, Circle } from 'lucide-react';
 
 const statusColors = {
@@ -19,10 +20,32 @@ const statusLabels = {
 };
 
 export default function AgentStatusBar() {
-  const { agentStatus, wsConnected, activeCampaignId } = useStore();
+  const { agentStatus, wsConnected, activeCampaignId, setActiveCampaignId } = useStore();
+  const [campaigns, setCampaigns] = useState([]);
+  const [selectedCampaign, setSelectedCampaign] = useState(activeCampaignId || '');
+
+  useEffect(() => {
+    loadCampaigns();
+  }, []);
+
+  useEffect(() => {
+    if (activeCampaignId) setSelectedCampaign(activeCampaignId);
+  }, [activeCampaignId]);
+
+  async function loadCampaigns() {
+    const data = await campaignsApi.list();
+    setCampaigns(data || []);
+    // Auto-select the first active campaign if none selected
+    if (!activeCampaignId && data.length > 0) {
+      const active = data.find(c => c.status === 'active') || data[0];
+      setSelectedCampaign(active.id);
+    }
+  }
 
   const handleGoAvailable = async () => {
-    await agentsApi.goAvailable(activeCampaignId);
+    const campId = selectedCampaign || activeCampaignId;
+    if (campId) setActiveCampaignId(campId);
+    await agentsApi.goAvailable(campId);
   };
 
   const handlePause = async () => {
@@ -47,11 +70,31 @@ export default function AgentStatusBar() {
             {statusLabels[agentStatus]}
           </span>
         </div>
+
+        {/* Campaign selector - shown when offline or available */}
+        {(agentStatus === 'offline' || agentStatus === 'paused') && campaigns.length > 0 && (
+          <select
+            value={selectedCampaign}
+            onChange={e => setSelectedCampaign(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-leap-500"
+          >
+            <option value="">Select Campaign</option>
+            {campaigns.map(c => (
+              <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
+            ))}
+          </select>
+        )}
+
+        {agentStatus === 'available' && selectedCampaign && (
+          <span className="text-xs text-gray-500">
+            Campaign: {campaigns.find(c => c.id === selectedCampaign)?.name || '—'}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
         {agentStatus === 'offline' && (
-          <button onClick={handleGoAvailable} className="btn-primary text-sm py-1.5">
+          <button onClick={handleGoAvailable} disabled={!selectedCampaign} className="btn-primary text-sm py-1.5 disabled:opacity-50">
             Go Available
           </button>
         )}
