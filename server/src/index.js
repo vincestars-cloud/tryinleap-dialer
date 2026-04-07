@@ -14,6 +14,7 @@ import { leadRouter } from './routes/leads.js';
 import { campaignRouter } from './routes/campaigns.js';
 import { smsRouter } from './routes/sms.js';
 import { recordingRouter } from './routes/recordings.js';
+import { webrtcRouter } from './routes/webrtc.js';
 import { authRouter } from './routes/auth.js';
 import { authMiddleware } from './middleware/auth.js';
 import { DialerEngine } from './services/dialerEngine.js';
@@ -49,6 +50,7 @@ app.use('/api/leads', authMiddleware, leadRouter);
 app.use('/api/campaigns', authMiddleware, campaignRouter);
 app.use('/api/sms', authMiddleware, smsRouter);
 app.use('/api/recordings', authMiddleware, recordingRouter);
+app.use('/api/webrtc', authMiddleware, webrtcRouter);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));

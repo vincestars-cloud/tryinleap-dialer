@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js';
 import { makeOutboundCall, hangupCall, createConference, joinConference, playAudio } from './telnyx.js';
+import { getLocalCallerId } from './localPresence.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class DialerEngine {
@@ -116,6 +117,9 @@ export class DialerEngine {
   }
 
   async placeCall(lead, campaignConfig) {
+    // Get local caller ID matching lead's area code
+    const callerId = await getLocalCallerId(lead.phone, campaignConfig.caller_id);
+
     // Create call record in DB
     const { data: callRecord } = await supabase
       .from('calls')
@@ -123,7 +127,7 @@ export class DialerEngine {
         campaign_id: campaignConfig.id,
         lead_id: lead.id,
         direction: 'outbound',
-        from_number: campaignConfig.caller_id,
+        from_number: callerId,
         to_number: lead.phone,
         status: 'initiated'
       })

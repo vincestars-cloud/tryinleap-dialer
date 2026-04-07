@@ -98,3 +98,9 @@ export const sms = {
 export const recordings = {
   list: (params) => request(`/recordings?${new URLSearchParams(params)}`)
 };
+
+// WebRTC
+export const webrtc = {
+  credentials: () => request('/webrtc/credentials'),
+  token: () => request('/webrtc/token')
+};

@@ -1,8 +1,9 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Phone, Users, BarChart3, MessageSquare, Mic, Shield, LogOut, Zap } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { wsService } from '../../services/websocket';
+import { webrtc as webrtcApi } from '../../services/api';
 import AgentStatusBar from '../dashboard/AgentStatusBar';
 import ActiveCallBar from '../softphone/ActiveCallBar';
 import Notifications from './Notifications';
@@ -19,6 +20,7 @@ const navItems = [
 export default function Layout() {
   const { agent, logout, setActiveCall, setAgentStatus, addNotification, setWsConnected, setDialerStats, updateAgentInList } = useStore();
   const navigate = useNavigate();
+  const audioRef = useRef(null);
 
   useEffect(() => {
     if (!agent) return;
@@ -75,6 +77,8 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen">
+      {/* Hidden audio element for WebRTC call audio */}
+      <audio ref={audioRef} id="remote-audio" autoPlay />
       {/* Sidebar */}
       <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
         <div className="p-6 border-b border-gray-800">
