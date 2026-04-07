@@ -12,13 +12,15 @@ const apiHeaders = () => ({
 // ─── Call Control ─────────────────────────────────
 
 export async function makeOutboundCall({ to, from, connectionId, clientState, webhookUrl, skipAMD = false }) {
+  const wh = webhookUrl || process.env.WEBHOOK_URL || 'https://tryinleap-dialer.onrender.com/webhooks/telnyx';
   const callParams = {
     connection_id: connectionId || process.env.TELNYX_CONNECTION_ID,
     to,
     from: from || process.env.TELNYX_PHONE_NUMBER,
-    webhook_url: webhookUrl || process.env.WEBHOOK_URL,
+    webhook_url: wh,
     client_state: clientState ? Buffer.from(JSON.stringify(clientState)).toString('base64') : undefined
   };
+  console.log(`Dialing ${to} from ${callParams.from} via connection ${callParams.connection_id} webhook=${wh} skipAMD=${skipAMD}`);
 
   // Only enable AMD for predictive/progressive dialing, not manual calls
   if (!skipAMD) {

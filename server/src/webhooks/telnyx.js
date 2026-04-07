@@ -5,12 +5,22 @@ import { supabase } from '../services/supabase.js';
 const router = Router();
 
 // Track WebRTC leg → PSTN leg mapping for bridging
-const webrtcToPstn = new Map(); // webrtcCallControlId -> { pstnCallControlId, leadPhone, callId, agentId }
-const pstnToWebrtc = new Map(); // pstnCallControlId -> webrtcCallControlId
+const webrtcToPstn = new Map();
+const pstnToWebrtc = new Map();
+
+// Webhook event log (accessible via GET for debugging)
+const webhookLog = [];
+
+router.get('/log', (req, res) => {
+  res.json(webhookLog.slice(0, 50));
+});
 
 router.post('/', async (req, res) => {
   const event = req.body?.data;
-  if (!event) return res.status(200).send('ok');
+  if (!event) {
+    webhookLog.unshift({ time: new Date().toISOString(), type: 'no_data', body: JSON.stringify(req.body).substring(0, 500) });
+    return res.status(200).send('ok');
+  }
 
   const eventType = event.event_type;
   const callControlId = event.payload?.call_control_id;
@@ -23,6 +33,8 @@ router.post('/', async (req, res) => {
   }
 
   console.log(`Webhook: ${eventType} | ${callControlId} | dir=${direction} | state=${JSON.stringify(clientState)}`);
+  webhookLog.unshift({ time: new Date().toISOString(), type: eventType, callControlId, direction, clientState, raw: JSON.stringify(event).substring(0, 300) });
+  if (webhookLog.length > 100) webhookLog.pop();
 
   try {
     const dialerEngine = req.app.get('dialerEngine');
