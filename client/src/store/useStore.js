@@ -54,5 +54,15 @@ export const useStore = create((set, get) => ({
 
   // WebSocket connected
   wsConnected: false,
-  setWsConnected: (val) => set({ wsConnected: val })
+  setWsConnected: (val) => set({ wsConnected: val }),
+
+  // WebRTC
+  webrtcMakeCall: null, // function to make a WebRTC call
+  webrtcStatus: 'disconnected',
+  setWebrtcMakeCall: (fn) => set({ webrtcMakeCall: fn }),
+  setWebrtcStatus: (status) => set({ webrtcStatus: status }),
+
+  // SIP credentials
+  sipCredentials: null,
+  setSipCredentials: (creds) => set({ sipCredentials: creds })
 }));

@@ -37,30 +37,27 @@ router.get('/diagnostics', (req, res) => {
   res.json(dialerEngine.getDiagnostics());
 });
 
-// POST /api/dialer/manual-call — place a single outbound call to a specific lead
+// POST /api/dialer/manual-call — prepare a manual call (returns info for WebRTC leg)
 router.post('/manual-call', async (req, res) => {
   const { leadId, phone } = req.body;
-  const dialerEngine = req.app.get('dialerEngine');
-  const agentManager = req.app.get('agentManager');
 
   try {
+    const { supabase } = await import('../services/supabase.js');
+    const { getLocalCallerId } = await import('../services/localPresence.js');
+
     // Get lead info
     let lead, callerId = process.env.TELNYX_PHONE_NUMBER;
     if (leadId) {
-      const { data } = await (await import('../services/supabase.js')).supabase
-        .from('leads').select('*').eq('id', leadId).single();
+      const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
       lead = data;
     }
 
     const toNumber = lead?.phone || phone;
     if (!toNumber) return res.status(400).json({ error: 'No phone number provided' });
 
-    // Get local caller ID
-    const { getLocalCallerId } = await import('../services/localPresence.js');
     callerId = await getLocalCallerId(toNumber, callerId);
 
     // Create call record
-    const { supabase } = await import('../services/supabase.js');
     const { data: callRecord } = await supabase
       .from('calls')
       .insert({
@@ -75,30 +72,6 @@ router.post('/manual-call', async (req, res) => {
       .select().single();
 
     // Place call via Telnyx
-    const { makeOutboundCall } = await import('../services/telnyx.js');
-    const clientState = { callId: callRecord.id, leadId: leadId || null, campaignId: lead?.campaign_id || null, manual: true };
-    const telnyxCall = await makeOutboundCall({ to: toNumber, from: callerId, clientState });
-
-    // Update call with Telnyx IDs
-    await supabase.from('calls').update({
-      telnyx_call_control_id: telnyxCall.call_control_id,
-      telnyx_call_leg_id: telnyxCall.call_leg_id
-    }).eq('id', callRecord.id);
-
-    // Track in dialer engine
-    dialerEngine.pendingCalls.set(telnyxCall.call_control_id, {
-      callId: callRecord.id,
-      leadId: leadId || null,
-      campaignId: lead?.campaign_id || null,
-      telnyxCallControlId: telnyxCall.call_control_id,
-      telnyxCallLegId: telnyxCall.call_leg_id,
-      agentId: req.agent.id,
-      status: 'initiated'
-    });
-
-    // Mark agent as on_call
-    await agentManager.assignCallToAgent(req.agent.id, callRecord.id);
-
     // Update lead attempts
     if (leadId) {
       await supabase.from('leads').update({
@@ -107,21 +80,25 @@ router.post('/manual-call', async (req, res) => {
       }).eq('id', leadId);
     }
 
-    // Send call info to agent via WebSocket
-    const wsManager = req.app.get('wsManager');
-    wsManager.sendToAgent(req.agent.id, {
-      type: 'incoming_call',
-      callId: callRecord.id,
-      callControlId: telnyxCall.call_control_id,
-      lead: lead || { phone: toNumber },
-      campaignId: lead?.campaign_id || null,
-      manual: true
-    });
-
+    // Return call info — the browser WebRTC client will initiate the call
+    // The webhook will handle dialing the PSTN leg and bridging
     res.json({
       success: true,
       callId: callRecord.id,
-      callControlId: telnyxCall.call_control_id
+      leadPhone: toNumber,
+      callerId,
+      lead: lead || { phone: toNumber },
+      // The browser should call this "destination" which routes through our webhook
+      // The client_state tells our webhook to dial the PSTN leg
+      clientState: {
+        type: 'webrtc_leg',
+        callId: callRecord.id,
+        leadId: leadId || null,
+        leadPhone: toNumber,
+        callerId,
+        agentId: req.agent.id,
+        campaignId: lead?.campaign_id || null
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

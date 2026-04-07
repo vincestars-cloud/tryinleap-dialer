@@ -20,9 +20,95 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const { agent, logout, setActiveCall, setAgentStatus, addNotification, setWsConnected, setDialerStats, updateAgentInList } = useStore();
+  const { agent, logout, setActiveCall, setAgentStatus, addNotification, setWsConnected, setDialerStats, updateAgentInList, sipCredentials, setSipCredentials, setWebrtcMakeCall, setWebrtcStatus } = useStore();
   const navigate = useNavigate();
   const audioRef = useRef(null);
+  const webrtcRef = useRef(null);
+
+  // Initialize WebRTC when SIP credentials are available
+  useEffect(() => {
+    if (!sipCredentials) return;
+
+    async function initWebRTC() {
+      try {
+        const { TelnyxRTC } = await import('@telnyx/webrtc');
+        const client = new TelnyxRTC({
+          login: sipCredentials.login,
+          password: sipCredentials.password
+        });
+
+        client.on('telnyx.ready', () => {
+          console.log('WebRTC: Ready');
+          setWebrtcStatus('ready');
+          setWebrtcMakeCall(() => (destinationNumber, callerNumber, callerName, clientState) => {
+            const call = client.newCall({
+              destinationNumber,
+              callerNumber: callerNumber || '',
+              callerName: callerName || 'TryInLeap',
+              audio: true,
+              video: false,
+              customHeaders: clientState ? [{ name: 'X-Client-State', value: btoa(JSON.stringify(clientState)) }] : undefined
+            });
+            return call;
+          });
+        });
+
+        client.on('telnyx.error', (err) => {
+          console.error('WebRTC error:', err);
+          setWebrtcStatus('error');
+        });
+
+        client.on('telnyx.notification', (notification) => {
+          const call = notification.call;
+          if (!call) return;
+          if (notification.type === 'callUpdate') {
+            console.log('WebRTC call state:', call.state);
+            if (call.state === 'active') {
+              const remoteAudio = document.getElementById('remote-audio');
+              if (remoteAudio && call.remoteStream) {
+                remoteAudio.srcObject = call.remoteStream;
+              }
+            }
+            if (call.state === 'hangup' || call.state === 'destroy') {
+              const remoteAudio = document.getElementById('remote-audio');
+              if (remoteAudio) remoteAudio.srcObject = null;
+            }
+          }
+        });
+
+        client.connect();
+        webrtcRef.current = client;
+
+        // Request microphone permission
+        await navigator.mediaDevices.getUserMedia({ audio: true }).catch(e => {
+          console.error('Mic permission denied:', e);
+          addNotification({ type: 'error', message: 'Microphone access denied. Please allow microphone in browser settings.' });
+        });
+
+      } catch (e) {
+        console.error('WebRTC init failed:', e);
+      }
+    }
+
+    initWebRTC();
+    return () => {
+      if (webrtcRef.current) {
+        webrtcRef.current.disconnect();
+        webrtcRef.current = null;
+      }
+    };
+  }, [sipCredentials]);
+
+  // Fetch SIP credentials on mount
+  useEffect(() => {
+    if (!agent) return;
+    webrtcApi.credentials().then(creds => {
+      setSipCredentials(creds);
+      console.log('SIP credentials loaded:', creds.login);
+    }).catch(err => {
+      console.log('SIP credentials not available yet:', err.message);
+    });
+  }, [agent?.id]);
 
   useEffect(() => {
     if (!agent) return;

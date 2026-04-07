@@ -7,7 +7,7 @@ import { ArrowLeft, Phone, MessageSquare, FileText, Clock, Send, Trash2, Save, P
 export default function LeadDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { agent, setActiveCall, setAgentStatus } = useStore();
+  const { agent, setActiveCall, setAgentStatus, webrtcMakeCall, webrtcStatus } = useStore();
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState('info');
   const [noteText, setNoteText] = useState('');
@@ -57,11 +57,27 @@ export default function LeadDetailPage() {
     if (calling) return;
     setCalling(true);
     try {
+      // Step 1: Get call info from server (creates call record, returns client state)
       const result = await dialerApi.manualCall({ leadId: id });
+
+      // Step 2: If WebRTC is ready, initiate browser call (with audio)
+      if (webrtcMakeCall && webrtcStatus === 'ready') {
+        // The destination number goes through our Telnyx connection
+        // The client_state tells our webhook to dial the PSTN leg
+        const call = webrtcMakeCall(
+          result.leadPhone,           // destination (triggers webhook)
+          result.callerId,            // caller ID
+          `${data.lead.first_name} ${data.lead.last_name}`,
+          result.clientState          // passed in SIP headers → webhook
+        );
+        console.log('WebRTC call initiated:', call);
+      } else {
+        console.log('WebRTC not ready (status:', webrtcStatus, '), call placed server-side only');
+      }
+
       setActiveCall({
         callId: result.callId,
-        callControlId: result.callControlId,
-        lead: data.lead,
+        lead: result.lead || data.lead,
         campaignId: data.lead.campaign_id
       });
       setAgentStatus('on_call');
