@@ -47,6 +47,7 @@ export const dialer = {
   startCampaign: (id) => request(`/dialer/campaign/${id}/start`, { method: 'POST' }),
   stopCampaign: (id) => request(`/dialer/campaign/${id}/stop`, { method: 'POST' }),
   stats: () => request('/dialer/stats'),
+  manualCall: (data) => request('/dialer/manual-call', { method: 'POST', body: JSON.stringify(data) }),
   hangup: (callControlId) => request(`/dialer/call/${callControlId}/hangup`, { method: 'POST' }),
   startRecording: (callControlId) => request(`/dialer/call/${callControlId}/record/start`, { method: 'POST' }),
   stopRecording: (callControlId) => request(`/dialer/call/${callControlId}/record/stop`, { method: 'POST' })
