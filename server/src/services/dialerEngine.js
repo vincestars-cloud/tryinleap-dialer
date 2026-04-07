@@ -9,11 +9,14 @@ export class DialerEngine {
     this.wsManager = wsManager;
 
     // Active calls waiting for AMD result or agent assignment
-    this.pendingCalls = new Map(); // callControlId -> { callId, leadId, campaignId, status }
+    this.pendingCalls = new Map();
     // Active campaigns being dialed
-    this.activeCampaigns = new Map(); // campaignId -> { intervalId, config }
-    // Calls waiting for an agent (answered by human, no agent free yet)
-    this.callQueue = []; // [{ callControlId, callId, leadId, campaignId, answeredAt }]
+    this.activeCampaigns = new Map();
+    // Calls waiting for an agent
+    this.callQueue = [];
+    // Recent errors for diagnostics
+    this.recentErrors = [];
+    this.recentActivity = [];
   }
 
   // ─── Campaign Control ───────────────────────────────
@@ -82,10 +85,14 @@ export class DialerEngine {
     // Fetch leads to dial
     const leads = await this.getNextLeads(campaignId, callsToMake);
 
+    this.logActivity(`Dialing ${leads.length} leads for campaign ${config.name} (${callsToMake} needed, ${availableAgents} agents, ${activeCalls} active)`);
+
     for (const lead of leads) {
       try {
         await this.placeCall(lead, config);
+        this.logActivity(`Placed call to ${lead.phone} (${lead.first_name} ${lead.last_name})`);
       } catch (err) {
+        this.logError(`Failed to dial ${lead.phone}: ${err.message}`);
         console.error(`Failed to dial ${lead.phone}:`, err.message);
       }
     }
@@ -448,5 +455,26 @@ export class DialerEngine {
     }
 
     return stats;
+  }
+
+  logError(msg) {
+    this.recentErrors.unshift({ time: new Date().toISOString(), message: msg });
+    if (this.recentErrors.length > 50) this.recentErrors.pop();
+  }
+
+  logActivity(msg) {
+    this.recentActivity.unshift({ time: new Date().toISOString(), message: msg });
+    if (this.recentActivity.length > 100) this.recentActivity.pop();
+  }
+
+  getDiagnostics() {
+    return {
+      errors: this.recentErrors.slice(0, 20),
+      activity: this.recentActivity.slice(0, 30),
+      agentStates: this.agentManager.getAllAgentStates(),
+      activeCampaigns: Array.from(this.activeCampaigns.keys()),
+      pendingCallCount: this.pendingCalls.size,
+      queueLength: this.callQueue.length
+    };
   }
 }

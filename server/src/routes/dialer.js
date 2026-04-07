@@ -31,6 +31,12 @@ router.get('/stats', (req, res) => {
   res.json(dialerEngine.getStats());
 });
 
+// GET /api/dialer/diagnostics
+router.get('/diagnostics', (req, res) => {
+  const dialerEngine = req.app.get('dialerEngine');
+  res.json(dialerEngine.getDiagnostics());
+});
+
 // POST /api/dialer/call/:callControlId/hangup
 router.post('/call/:callControlId/hangup', async (req, res) => {
   try {
